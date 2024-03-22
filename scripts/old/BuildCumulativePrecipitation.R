@@ -1,0 +1,118 @@
+library(ggplot2)
+library(readr)
+library(tidyr)
+library(dplyr)
+library(lubridate)
+library(stringr)
+
+ghcn_wide <- read_csv(glue("data/{params$station}.csv"))
+
+stats <- list(
+  year_to_plot = max(ghcn_wide$year),
+  last_date = max(ghcn_wide$date),
+  this_year = ghcn_wide |>
+    filter(year == year_to_plot),
+  min = ghcn_wide |> summarise(across(prcp:tmin, ~min(.x, na.rm = TRUE))) |>  as.list(),
+  max = ghcn_wide |> summarise(across(prcp:tmin, ~max(.x, na.rm = TRUE))) |>  as.list()
+)
+
+
+
+past_years <- ghcn_wide |>
+  group_by(year) |>
+  filter(n() > 364) |>
+  ungroup()
+
+past_years |>
+  ggplot(aes(day_of_year, cum_precip, group = year)) +
+  geom_step(lwd = 0.1)
+
+daily_summary_stats <- past_years |>
+  filter(year != year_to_plot) |>
+  select(day_of_year, cum_precip) |>
+  group_by(day_of_year) |>
+  summarise(max = max(cum_precip, na.rm = T),
+            min = min(cum_precip, na.rm = T),
+            x5 = quantile(cum_precip, 0.05, na.rm = T),
+            x20 = quantile(cum_precip, 0.2, na.rm = T),
+            x40 = quantile(cum_precip, 0.4, na.rm = T),
+            x60 = quantile(cum_precip, 0.6, na.rm = T),
+            x80 = quantile(cum_precip, 0.8, na.rm = T),
+            x95 = quantile(cum_precip, 0.95, na.rm = T)) |>
+  ungroup()
+
+# month breaks
+month_breaks <- ghcn_wide |>
+  filter(year == 2019) |>
+  group_by(month) |>
+  slice_min(order_by = day_of_year, n = 1) |>
+  ungroup() |>
+  select(month, day_of_year) |>
+  mutate(month_name = month.abb)
+
+# pctile labels
+pctile_labels <- daily_summary_stats |> 
+  filter(day_of_year == 365) |> 
+  pivot_longer(cols = -day_of_year, names_to = "pctile", values_to = "precip") |> 
+  mutate(pctile = ifelse(str_sub(pctile, 1, 1) == "x", 
+                         paste0(str_sub(pctile, 2, -1), "th"), pctile))
+
+cum_precip_graph <- daily_summary_stats |>
+  filter(day_of_year < 366) |>
+  ggplot(aes(x = day_of_year)) +
+  # draw vertical lines for the months
+  geom_vline(xintercept = c(month_breaks$day_of_year, 365),
+             linetype = "dotted", lwd = 0.2) +
+  # ribbon between the lowest and 5th, 95th and max percentiles
+  geom_ribbon(aes(ymin = min, ymax = max),
+              fill = "#bdc9e1") +
+  # ribbon between the 5th and 20th, 80th to 95th percentiles
+  geom_ribbon(aes(ymin = x5, ymax = x95),
+              fill = "#74a9cf") +
+  # ribbon between the 20th and 40th, 60th and 80th percentiles
+  geom_ribbon(aes(ymin = x20, ymax = x80),
+              fill = "#2b8cbe") +
+  # ribbon between the 40th and 60th percentiles
+  geom_ribbon(aes(ymin = x40, ymax = x60),
+              fill = "#045a8d") +
+  # y-axis breaks
+  geom_hline(yintercept = seq(0, 50, 5),
+             color = "white", lwd = 0.1) +
+  # line for this year's values
+  geom_line(data = this_year,
+            aes(y = cum_precip), lwd = 1.2) +
+  ggrepel::geom_label_repel(data = filter(this_year, day_of_year == max(day_of_year)),
+                            aes(y = cum_precip, label = round(cum_precip, 1)),
+                            point.padding = 5, direction = "y", alpha = 0.8) +
+  geom_segment(data = pctile_labels, aes(x = 365, xend = 367, y = precip, yend = precip)) +
+  geom_text(data = pctile_labels, aes(367.5, precip, label = pctile),
+            hjust = 0, family = "serif", size = 3) +
+  scale_y_continuous(breaks = seq(-10, 100, 10),
+                     labels = scales::unit_format(suffix = "in."),
+                     expand = expansion(0.01),
+                     name = NULL) +
+  scale_x_continuous(expand = expansion(c(0, 0.04)),
+                     breaks = month_breaks$day_of_year + 15,
+                     labels = month_breaks$month_name,
+                     name = NULL) +
+  labs(title = "Cumulative annual precipitation at Madison Truax Field",
+       subtitle = paste("The line shows precipitation for",
+                        paste0(lubridate::year(last_date), "."),
+                        "The ribbons cover the",
+                        "historical range. The last date shown is", 
+                        format(last_date, "%b %d, %Y.")),
+       caption = paste("Records begin on January 1, 1939.",
+                       "This graph was last updated on", format(Sys.Date(), "%B %d, %Y."))) +
+  theme(panel.background = element_blank(),
+        panel.border = element_blank(),
+        panel.grid = element_blank(),
+        plot.background = element_rect(fill = "linen",
+                                       colour = "linen"),
+        plot.title.position = "plot",
+        plot.title = element_text(face = "bold", size = 16),
+        axis.ticks = element_blank())
+
+cum_precip_graph
+
+ggsave("graphs/AnnualCumulativePrecipitation_USW00014837.png", plot = cum_precip_graph,
+      width = 9, height = 4.5)
