@@ -17,7 +17,6 @@ cliflo_raw_rain <- read_csv('data/cliflo-auckland-rainfall.csv')
 
 # clean data and join -----------------------------------------------------
 
-
 cliflo_temp <- cliflo_raw_temp |> 
   clean_names() |> 
   mutate(
