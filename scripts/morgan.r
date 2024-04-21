@@ -1,6 +1,6 @@
 library(tidyverse)
 library(scales)
-library(gfonts)
+library(ragg)
 
 # mock up plots to use for testing ----------------------------------------
 
@@ -22,15 +22,6 @@ p <- penguins |>
 
 p + theme_bw()
 
-
-# select a font to use ----------------------------------------------------
-
-get_all_fonts()
-
-setup_font(
-  id = 'roboto'
-)
-
 # alter to use morgan theme -----------------------------------------------
 
 morgan_swatch <- c('#FAAB72', '#ECB3D6', '#a0babc', '#F7DA94', '#c8e9eb', 
@@ -49,12 +40,17 @@ morgan_light_dark |>
 
 morgan_background <- '#F6F2E9'
 
-# this will set the theme for all charts
+#' this will set the theme for all charts
+#' you can use any font installed on your compute
+#' the font used (montserrat) has been downloaded from google fonts
+#' https://fonts.google.com/specimen/Montserrat?query=Montserrat
+
 
 theme_set(
-  theme_bw() +
+  theme_bw(base_size = 12, base_family = "Montserrat") +
     theme(
       plot.title.position = 'plot',
+      plot.title = element_text(size = 20, face = 'bold'),
       panel.border = ggplot2::element_blank(),
       panel.background = element_rect(fill = morgan_background, colour = NA),
       plot.background = element_rect(fill = morgan_background, colour = NA)
@@ -62,13 +58,5 @@ theme_set(
   )
 
 p + scale_fill_manual(values = morgan_swatch) 
-
-
-
-
-
-
-
-
 
 
