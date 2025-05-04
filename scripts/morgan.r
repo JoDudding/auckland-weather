@@ -59,4 +59,4 @@ theme_set(
 
 p + scale_fill_manual(values = morgan_swatch) 
 
-
+ggsave('graphs/morgan-theme.png', width = 9, height = 4.5)

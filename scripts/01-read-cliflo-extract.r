@@ -11,29 +11,35 @@ source('scripts/_setup.r')
 
 # read raw files ----------------------------------------------------------
 
-cliflo_raw_temp <- read_csv('data/cliflo-auckland-temperature.csv') 
+cliflo_raw_temp <- read_csv("data/1962__Temperature__daily/1962__Temperature__daily.csv") |> 
+  glimpse()
 
-cliflo_raw_rain <- read_csv('data/cliflo-auckland-rainfall.csv') 
+cliflo_raw_rain <- read_csv("data/1962__Rain__daily/1962__Rain__daily.csv") |> 
+  glimpse()
+
 
 # clean data and join -----------------------------------------------------
 
 cliflo_temp <- cliflo_raw_temp |> 
   clean_names() |> 
   mutate(
-    date_nzst = ymd_hm(date_nzst) |> as_date(),
-    tmax_c = as.numeric(tmax_c),
-    tmin_c = as.numeric(tmin_c),
-    tmean_c = as.numeric(tmean_c)
+    date_nzst = as_date(observation_time_utc),
+    tmax_c = maximum_temperature_deg_c,
+    tmin_c = minimum_temperature_deg_c,
+    tmean_c = mean_temperature_deg_c         
   ) |> 
   select(date = date_nzst, tmax = tmax_c, tmin = tmin_c) |> 
   glimpse()
 
+max(cliflo_temp$date)
+
 cliflo_rain <- cliflo_raw_rain |> 
   clean_names() |> 
-  mutate(date_nzst = ymd_hm(date_nzst) |> as_date()) |> 
-  select(date = date_nzst, amount_mm) |> 
+  mutate(date_nzst = as_date(observation_time_utc )) |> 
+  select(date = date_nzst, amount_mm = rainfall_mm ) |> 
   glimpse()
 
+max(cliflo_rain$date)
 
 cliflow <- full_join(cliflo_temp, cliflo_rain, by = 'date') |> 
   mutate(
@@ -71,15 +77,14 @@ cliflow |>
       value > 0.05 ~ year
     )
   ) |> 
+  arrange(-value) |> 
   ggplot(aes(year, value, label = label)) +
   geom_col() +
   geom_text(vjust = 0) +
   scale_y_continuous(label = percent, limits = c(0, 1)) +
   facet_wrap(~key, ncol = 1)
 
-cli_alert_info(
-  'Seems to be significant missing data for 1993 and 1994'
-)
+
 
 # save as rds -------------------------------------------------------------
 
