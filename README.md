@@ -14,5 +14,10 @@ so I can’t schedule updates with github actions.
 
 ![](graphs/auckland-cum_amount_mm.png)
 
+Data issues:
+
+- It also seems to have a delay of about a month.
+- Missing data in 1993/1994
+
 Based on the [jdjohn215 milwaukee-weather github
 repo](https://github.com/jdjohn215/milwaukee-weather)
