@@ -8,8 +8,6 @@ How is the weather at the Auckland Aero station compared to historical values?
 Data sourced from [NIWA's National Climate Database](https://cliflo.niwa.co.nz/).
 It doesn't seem to have an API. so I can't schedule updates with github actions.
 
-
-
 ![](graphs/auckland-tmax.png)
 
 ![](graphs/auckland-tmin.png)
